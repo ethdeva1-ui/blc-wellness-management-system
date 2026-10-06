@@ -1,0 +1,282 @@
+.blc-wellness-page {
+	--blc-wellness-ink: #183b36;
+	--blc-wellness-muted: #52645f;
+	--blc-wellness-accent: #28745e;
+	--blc-wellness-soft: #edf5ef;
+	--blc-wellness-border: #dce8df;
+	max-width: 1080px;
+	margin: 0 auto;
+	padding: clamp(1.25rem, 4vw, 3.5rem) 1.25rem;
+	color: var(--blc-wellness-ink);
+}
+
+.blc-wellness-page,
+.blc-wellness-page * {
+	box-sizing: border-box;
+}
+
+.blc-wellness-hero {
+	margin-bottom: 2rem;
+	padding: clamp(2rem, 6vw, 4.5rem);
+	border-radius: 1.5rem;
+	background: linear-gradient(135deg, #edf5ef 0%, #f8f4e9 100%);
+}
+
+.blc-wellness-hero .blc-wellness-eyebrow {
+	margin: 0 0 0.75rem;
+	color: var(--blc-wellness-accent);
+	font-size: 0.8rem;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+}
+
+.blc-wellness-hero h1 {
+	margin: 0 0 0.75rem;
+	color: var(--blc-wellness-ink);
+	font-size: clamp(2rem, 5vw, 3.5rem);
+	line-height: 1.1;
+}
+
+.blc-wellness-hero > p:last-child {
+	max-width: 42rem;
+	margin: 0;
+	color: var(--blc-wellness-muted);
+	font-size: 1.1rem;
+	line-height: 1.65;
+}
+
+.blc-wellness-menu {
+	position: sticky;
+	top: 1rem;
+	z-index: 2;
+	margin: 0 0 2rem;
+	padding: 0.75rem;
+	border: 1px solid var(--blc-wellness-border);
+	border-radius: 1rem;
+	background: rgba(255, 255, 255, 0.96);
+	box-shadow: 0 0.5rem 1.5rem rgba(24, 59, 54, 0.08);
+}
+
+.blc-wellness-menu ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.blc-wellness-menu a,
+.blc-wellness-menu button {
+	display: block;
+	padding: 0.8rem 1rem;
+	border-radius: 0.7rem;
+	border: 0;
+	background: transparent;
+	color: var(--blc-wellness-ink);
+	font: inherit;
+	font-weight: 700;
+	text-decoration: none;
+	text-align: left;
+	cursor: pointer;
+	transition: background-color 160ms ease, color 160ms ease;
+}
+
+.blc-wellness-menu a:hover,
+.blc-wellness-menu a:focus-visible,
+.blc-wellness-menu button:hover,
+.blc-wellness-menu button:focus-visible,
+.blc-wellness-menu button[aria-selected="true"] {
+	background: var(--blc-wellness-soft);
+	color: var(--blc-wellness-accent);
+}
+
+.blc-wellness-section {
+	scroll-margin-top: 6rem;
+	margin: 0 0 1.25rem;
+	padding: clamp(1.5rem, 4vw, 2.5rem);
+	border: 1px solid var(--blc-wellness-border);
+	border-radius: 1.25rem;
+	background: #fff;
+	box-shadow: 0 0.75rem 2rem rgba(24, 59, 54, 0.05);
+}
+
+.blc-wellness-section[hidden] {
+	display: none !important;
+}
+
+.blc-wellness-section h2 {
+	margin: 0 0 1rem;
+	color: var(--blc-wellness-ink);
+	font-size: clamp(1.5rem, 3vw, 2.15rem);
+	line-height: 1.2;
+}
+
+.blc-drink-calculator {
+	margin-top: 1.75rem;
+	padding: clamp(1.25rem, 3vw, 2rem);
+	border: 1px solid var(--blc-wellness-border);
+	border-radius: 1rem;
+	background: #f8fbf8;
+}
+
+.blc-drink-calculator__anchor {
+	display: block;
+	scroll-margin-top: 6rem;
+}
+
+.blc-drink-calculator__intro h3 {
+	margin: 0 0 0.5rem;
+	color: var(--blc-wellness-ink);
+	font-size: clamp(1.2rem, 2.5vw, 1.55rem);
+}
+
+.blc-drink-calculator__intro p {
+	margin: 0 0 1.25rem;
+	color: var(--blc-wellness-muted);
+	line-height: 1.55;
+}
+
+.blc-drink-calculator__controls {
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) minmax(10rem, 1fr);
+	gap: 0.55rem 1rem;
+	align-items: center;
+}
+
+.blc-drink-calculator__controls label {
+	color: var(--blc-wellness-ink);
+	font-size: 0.95rem;
+	font-weight: 700;
+}
+
+.blc-drink-calculator__controls select,
+.blc-drink-calculator__controls input {
+	width: 100%;
+	min-height: 2.9rem;
+	padding: 0.65rem 0.8rem;
+	border: 1px solid #aabdb1;
+	border-radius: 0.55rem;
+	background: #fff;
+	color: var(--blc-wellness-ink);
+	font: inherit;
+}
+
+.blc-drink-calculator__controls select:focus-visible,
+.blc-drink-calculator__controls input:focus-visible {
+	outline: 3px solid rgba(40, 116, 94, 0.25);
+	outline-offset: 2px;
+	border-color: var(--blc-wellness-accent);
+}
+
+.blc-drink-calculator__portion {
+	margin: 1rem 0;
+	color: var(--blc-wellness-muted);
+	font-size: 0.9rem;
+}
+
+.blc-drink-calculator__results {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75rem;
+}
+
+.blc-drink-calculator__results > div {
+	display: grid;
+	gap: 0.35rem;
+	padding: 1rem;
+	border-radius: 0.75rem;
+	background: #fff;
+}
+
+.blc-drink-calculator__results span {
+	color: var(--blc-wellness-muted);
+	font-size: 0.88rem;
+}
+
+.blc-drink-calculator__results strong {
+	color: var(--blc-wellness-ink);
+	font-size: clamp(1.35rem, 3vw, 1.8rem);
+	line-height: 1.2;
+}
+
+.blc-drink-calculator__note {
+	margin: 1rem 0 0;
+	color: var(--blc-wellness-muted);
+	font-size: 0.82rem;
+	line-height: 1.5;
+}
+
+.blc-drink-table-wrap {
+	margin-top: 1.5rem;
+	overflow-x: auto;
+}
+
+.blc-drink-table-wrap h3 {
+	margin: 0 0 0.75rem;
+	color: var(--blc-wellness-ink);
+	font-size: 1.15rem;
+}
+
+.blc-drink-table {
+	width: 100%;
+	min-width: 34rem;
+	border-collapse: collapse;
+	border: 1px solid var(--blc-wellness-border);
+	background: #fff;
+	text-align: left;
+}
+
+.blc-drink-table th,
+.blc-drink-table td {
+	padding: 0.8rem 0.9rem;
+	border-bottom: 1px solid var(--blc-wellness-border);
+	color: var(--blc-wellness-ink);
+	vertical-align: top;
+}
+
+.blc-drink-table thead th {
+	background: var(--blc-wellness-soft);
+	font-size: 0.9rem;
+	font-weight: 700;
+}
+
+.blc-drink-table tbody th {
+	font-weight: 600;
+}
+
+.blc-drink-table tbody tr:last-child th,
+.blc-drink-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.blc-wellness-section > :last-child {
+	margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+	.blc-wellness-menu {
+		position: static;
+	}
+
+	.blc-wellness-menu ul {
+		display: grid;
+	}
+
+	.blc-wellness-menu a,
+	.blc-wellness-menu button {
+		padding: 0.9rem;
+	}
+
+	.blc-drink-calculator__controls,
+	.blc-drink-calculator__results {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.blc-wellness-menu a,
+	.blc-wellness-menu button {
+		transition: none;
+	}
+}
