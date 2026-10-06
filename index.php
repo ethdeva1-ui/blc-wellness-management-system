@@ -22,8 +22,22 @@ add_shortcode( 'rethink_your_drink', 'blc_wellness_render_rethink_your_drink_sho
 add_shortcode( 'blc_wellness_page', 'blc_wellness_render_page_shortcode' );
 add_shortcode( 'blc_wellness_weight_loss_page', 'blc_wellness_render_weight_loss_page_shortcode' );
 add_action( 'wp_enqueue_scripts', 'blc_wellness_enqueue_frontend_styles' );
-add_action( 'admin_init', 'blc_wellness_create_frontend_page' );
-register_activation_hook( __FILE__, 'blc_wellness_create_frontend_page' );
+add_action( 'admin_init', 'blc_wellness_admin_setup' );
+register_activation_hook( __FILE__, 'blc_wellness_activate_plugin' );
+
+/** Install the goals table and create frontend pages when activated. */
+function blc_wellness_activate_plugin() {
+	BLC_Weightloss_Management::install();
+	blc_wellness_create_frontend_page();
+}
+
+/** Run one-time setup for existing installations. */
+function blc_wellness_admin_setup() {
+	if ( current_user_can( 'manage_options' ) ) {
+		BLC_Weightloss_Management::maybe_install();
+	}
+	blc_wellness_create_frontend_page();
+}
 
 /** Load the styles for the public wellness page. */
 function blc_wellness_enqueue_frontend_styles() {
@@ -31,7 +45,7 @@ function blc_wellness_enqueue_frontend_styles() {
 		'blc-wellness-frontend',
 		plugin_dir_url( __FILE__ ) . 'assets/css/frontend.css',
 		array(),
-		'1.0.3'
+		'2.0.0'
 	);
 }
 
