@@ -97,11 +97,6 @@ function blc_wellness_render_menu_shortcode() {
 /** Render the complete wellness programs page. */
 function blc_wellness_render_page_shortcode() {
 	return '<div class="blc-wellness-page">' .
-		'<header class="blc-wellness-hero">' .
-		'<p class="blc-wellness-eyebrow">' . esc_html__( 'BLC WELLNESS', 'blc-wellness-management-system' ) . '</p>' .
-		'<h1>' . esc_html__( 'Wellness Programs', 'blc-wellness-management-system' ) . '</h1>' .
-		'<p>' . esc_html__( 'Explore our wellness resources and find a program that fits your goals.', 'blc-wellness-management-system' ) . '</p>' .
-		'</header>' .
 		blc_wellness_render_menu_shortcode() .
 		blc_wellness_render_section_shortcode(
 			__( 'Rethink Your Drink', 'blc-wellness-management-system' ),

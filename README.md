@@ -20,6 +20,8 @@ The Weight Loss Management section is implemented in `backend/class-blc-weightlo
 
 The calculator is available to signed-in WordPress users. It stores each user's answers, estimate, nutrition preferences, and progress entries in the site-prefixed `weight_loss_goals` table (for example, `wp_weight_loss_goals`). User records are loaded and changed only for the signed-in user.
 
+Administrators with the `manage_options` capability can review saved records in the **Weight Loss Data** dashboard menu. The screen supports searching by name, username, email, or user ID, and shows each user's saved answers, estimates, nutrition preferences, and progress entries.
+
 The calculator uses the Mifflin–St Jeor resting-energy equation and activity multipliers. It labels results as estimates, limits requested loss to a gradual rate, and will not generate a calorie target below 1,200 kcal/day. It blocks users under 18 and goals below its general adult BMI screening threshold; users who are pregnant, breastfeeding, or have a condition requiring individualized nutrition advice must not use it. Nutrition meal ideas are general templates, not a prescribed diet.
 
 Reference material: [original Mifflin–St Jeor study](https://pubmed.ncbi.nlm.nih.gov/2305711/), [CDC guidance on gradual weight loss](https://www.cdc.gov/healthy-weight-growth/losing-weight/index.html), [NIDDK Body Weight Planner cautions](https://www.niddk.nih.gov/bwp), and [National Academies water-intake reference](https://nap.nationalacademies.org/read/10925/chapter/2).

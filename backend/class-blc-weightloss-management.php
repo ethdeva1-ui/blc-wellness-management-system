@@ -13,11 +13,234 @@ if ( ! defined( 'ABSPATH' ) ) {
 class BLC_Weightloss_Management {
 	const REST_NAMESPACE = 'blc-wellness/v1';
 	const SCHEMA_VERSION = '1';
+	private static $admin_page_hook = '';
 
 	/** Register public hooks. */
 	public static function init() {
 		add_shortcode( 'blc_weightloss_management', array( __CLASS__, 'render_shortcode' ) );
 		add_action( 'rest_api_init', array( __CLASS__, 'register_rest_routes' ) );
+		add_action( 'admin_menu', array( __CLASS__, 'register_admin_menu' ) );
+	}
+
+	/** Add the administrator-only weight loss data screen. */
+	public static function register_admin_menu() {
+		self::$admin_page_hook = add_menu_page(
+			__( 'Weight Loss Management Data', 'blc-wellness-management-system' ),
+			__( 'Weight Loss Data', 'blc-wellness-management-system' ),
+			'manage_options',
+			'blc-weight-loss-data',
+			array( __CLASS__, 'render_admin_page' ),
+			'dashicons-chart-area',
+			58
+		);
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
+	}
+
+	/** Load modal assets only on the weight loss data screen. */
+	public static function enqueue_admin_assets( $hook ) {
+		if ( self::$admin_page_hook !== $hook ) {
+			return;
+		}
+
+		wp_enqueue_style( 'blc-weightloss-admin', plugins_url( '../assets/css/weightloss-admin.css', __FILE__ ), array(), '2.1.0' );
+		wp_enqueue_script( 'blc-weightloss-admin', plugins_url( '../assets/js/weightloss-admin.js', __FILE__ ), array(), '2.1.0', true );
+	}
+
+	/** Render saved plans and their associated WordPress users. */
+	public static function render_admin_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view weight loss data.', 'blc-wellness-management-system' ) );
+		}
+
+		global $wpdb;
+		$table       = self::table_name();
+		$users_table = $wpdb->users;
+		$search      = isset( $_GET['s'] ) && is_scalar( $_GET['s'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['s'] ) ) : '';
+		$page_number = isset( $_GET['paged'] ) ? max( 1, absint( $_GET['paged'] ) ) : 1;
+		$per_page    = 20;
+		$offset      = ( $page_number - 1 ) * $per_page;
+		$where       = '';
+
+		if ( '' !== $search ) {
+			$like  = '%' . $wpdb->esc_like( $search ) . '%';
+			$where = $wpdb->prepare(
+				'WHERE (u.display_name LIKE %s OR u.user_login LIKE %s OR u.user_email LIKE %s OR CAST(g.user_id AS CHAR) = %s)',
+				$like,
+				$like,
+				$like,
+				$search
+			);
+		}
+
+		$count_sql = "SELECT COUNT(*) FROM {$table} g LEFT JOIN {$users_table} u ON u.ID = g.user_id {$where}";
+		$total     = (int) $wpdb->get_var( $count_sql );
+		$list_sql  = "SELECT g.*, u.display_name, u.user_login, u.user_email FROM {$table} g LEFT JOIN {$users_table} u ON u.ID = g.user_id {$where} ORDER BY g.updated_at DESC, g.id DESC LIMIT %d OFFSET %d";
+		$records   = $wpdb->get_results(
+			$wpdb->prepare( $list_sql, $per_page, $offset ),
+			ARRAY_A
+		);
+		$total_pages = max( 1, (int) ceil( $total / $per_page ) );
+
+		echo '<div class="wrap"><h1>' . esc_html__( 'Weight Loss Management Data', 'blc-wellness-management-system' ) . '</h1>';
+		echo '<p>' . esc_html__( 'Saved plans and progress records are grouped by the WordPress account that owns them.', 'blc-wellness-management-system' ) . '</p>';
+		echo '<form method="get" action="' . esc_url( admin_url( 'admin.php' ) ) . '">';
+		echo '<input type="hidden" name="page" value="blc-weight-loss-data">';
+		echo '<p class="search-box"><label class="screen-reader-text" for="blc-weight-loss-search">' . esc_html__( 'Search users', 'blc-wellness-management-system' ) . '</label>';
+		echo '<input type="search" id="blc-weight-loss-search" name="s" value="' . esc_attr( $search ) . '" placeholder="' . esc_attr__( 'Name, username, email, or user ID', 'blc-wellness-management-system' ) . '">';
+		echo '<input type="submit" class="button" value="' . esc_attr__( 'Search', 'blc-wellness-management-system' ) . '"></p></form>';
+
+		if ( empty( $records ) ) {
+			echo '<p>' . esc_html__( 'No saved weight loss plans were found.', 'blc-wellness-management-system' ) . '</p></div>';
+			return;
+		}
+
+		echo '<table class="widefat striped"><thead><tr>';
+		echo '<th>' . esc_html__( 'User', 'blc-wellness-management-system' ) . '</th>';
+		echo '<th>' . esc_html__( 'Current weight', 'blc-wellness-management-system' ) . '</th>';
+		echo '<th>' . esc_html__( 'Goal weight', 'blc-wellness-management-system' ) . '</th>';
+		echo '<th>' . esc_html__( 'Maintenance', 'blc-wellness-management-system' ) . '</th>';
+		echo '<th>' . esc_html__( 'Calorie target', 'blc-wellness-management-system' ) . '</th>';
+		echo '<th>' . esc_html__( 'Last updated', 'blc-wellness-management-system' ) . '</th>';
+		echo '<th>' . esc_html__( 'Saved details', 'blc-wellness-management-system' ) . '</th>';
+		echo '</tr></thead><tbody>';
+
+		foreach ( $records as $record ) {
+			$profile   = json_decode( $record['profile_json'], true );
+			$results   = json_decode( $record['results_json'], true );
+			$nutrition = json_decode( $record['nutrition_json'], true );
+			$progress  = json_decode( $record['progress_json'], true );
+			$profile   = is_array( $profile ) ? $profile : array();
+			$results   = is_array( $results ) ? $results : array();
+			$nutrition = is_array( $nutrition ) ? $nutrition : array();
+			$progress  = is_array( $progress ) ? $progress : array();
+			$units     = isset( $profile['units'] ) ? $profile['units'] : $record['units'];
+			$name      = ! empty( $record['display_name'] ) ? $record['display_name'] : __( 'Deleted user', 'blc-wellness-management-system' );
+			$email     = isset( $record['user_email'] ) ? $record['user_email'] : '';
+			$dialog_id = 'blc-weightloss-record-' . (int) $record['id'];
+
+			echo '<tr><td><strong>' . esc_html( $name ) . '</strong><br><span class="description">' . esc_html( $email ) . '</span><br><span class="description">' . sprintf( esc_html__( 'User ID: %d · Plan ID: %d', 'blc-wellness-management-system' ), (int) $record['user_id'], (int) $record['id'] ) . '</span></td>';
+			echo '<td>' . esc_html( self::format_weight( isset( $profile['current_weight_kg'] ) ? $profile['current_weight_kg'] : null, $units ) ) . '</td>';
+			echo '<td>' . esc_html( self::format_weight( isset( $profile['goal_weight_kg'] ) ? $profile['goal_weight_kg'] : null, $units ) ) . '</td>';
+			echo '<td>' . esc_html( isset( $results['maintenance_calories'] ) ? number_format_i18n( (int) $results['maintenance_calories'] ) . ' kcal/day' : '—' ) . '</td>';
+			echo '<td>' . esc_html( ! empty( $results['calorie_target'] ) ? number_format_i18n( (int) $results['calorie_target'] ) . ' kcal/day' : '—' ) . '</td>';
+			echo '<td>' . esc_html( mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $record['updated_at'] ) ) . '</td>';
+			echo '<td><button type="button" class="button button-primary blc-weightloss-open" aria-haspopup="dialog" aria-controls="' . esc_attr( $dialog_id ) . '">' . esc_html__( 'View details', 'blc-wellness-management-system' ) . '</button>';
+			echo '<dialog class="blc-weightloss-dialog" id="' . esc_attr( $dialog_id ) . '" aria-labelledby="' . esc_attr( $dialog_id . '-title' ) . '"><div class="blc-weightloss-dialog__header"><div><p class="blc-weightloss-dialog__eyebrow">' . esc_html__( 'Saved weight loss plan', 'blc-wellness-management-system' ) . '</p><h2 id="' . esc_attr( $dialog_id . '-title' ) . '">' . esc_html( $name ) . '</h2><p>' . esc_html( $email ) . '</p></div><button type="button" class="blc-weightloss-close" aria-label="' . esc_attr__( 'Close details', 'blc-wellness-management-system' ) . '">&times;</button></div><div class="blc-weightloss-dialog__body">';
+			self::render_admin_record_details( $profile, $results, $nutrition, $progress, $units );
+			echo '</div></dialog></td></tr>';
+		}
+
+		echo '</tbody></table>';
+		if ( $total_pages > 1 ) {
+			$base_url = add_query_arg( 'page', 'blc-weight-loss-data', admin_url( 'admin.php' ) ) . '&paged=%#%';
+			if ( '' !== $search ) {
+				$base_url .= '&s=' . rawurlencode( $search );
+			}
+			echo '<div class="tablenav"><div class="tablenav-pages">' . wp_kses_post(
+				paginate_links(
+					array(
+						'base'      => $base_url,
+						'format'    => '',
+						'current'   => $page_number,
+						'total'     => $total_pages,
+						'prev_text' => '&lsaquo;',
+						'next_text' => '&rsaquo;',
+						'type'      => 'plain',
+					)
+				)
+			) . '</div></div>';
+		}
+		echo '</div>';
+	}
+
+	/** Render one saved record's questionnaire, plan, and progress details. */
+	private static function render_admin_record_details( $profile, $results, $nutrition, $progress, $units ) {
+		$profile_labels = array(
+			'age'               => __( 'Age', 'blc-wellness-management-system' ),
+			'sex'               => __( 'Sex', 'blc-wellness-management-system' ),
+			'height_cm'         => __( 'Height', 'blc-wellness-management-system' ),
+			'activity'          => __( 'Activity level', 'blc-wellness-management-system' ),
+			'pace'              => __( 'Selected pace', 'blc-wellness-management-system' ),
+			'target_date'       => __( 'Requested date', 'blc-wellness-management-system' ),
+			'current_weight_kg' => __( 'Current weight', 'blc-wellness-management-system' ),
+			'goal_weight_kg'    => __( 'Goal weight', 'blc-wellness-management-system' ),
+		);
+
+		echo '<div class="blc-wellness-admin-details"><h4>' . esc_html__( 'Questionnaire answers', 'blc-wellness-management-system' ) . '</h4><dl>';
+		foreach ( $profile_labels as $key => $label ) {
+			if ( ! isset( $profile[ $key ] ) || '' === $profile[ $key ] ) {
+				continue;
+			}
+			$value = in_array( $key, array( 'current_weight_kg', 'goal_weight_kg' ), true )
+				? self::format_weight( $profile[ $key ], $units )
+				: ( 'height_cm' === $key ? number_format_i18n( (float) $profile[ $key ], 1 ) . ' cm' : $profile[ $key ] );
+			echo '<dt>' . esc_html( $label ) . '</dt><dd>' . esc_html( $value ) . '</dd>';
+		}
+		echo '</dl><h4>' . esc_html__( 'Calculated estimates', 'blc-wellness-management-system' ) . '</h4><dl>';
+		$result_labels = array(
+			'bmr_calories'         => __( 'BMR estimate', 'blc-wellness-management-system' ),
+			'maintenance_calories' => __( 'Maintenance calories', 'blc-wellness-management-system' ),
+			'calorie_target'       => __( 'Daily calorie target', 'blc-wellness-management-system' ),
+			'daily_deficit'        => __( 'Daily deficit', 'blc-wellness-management-system' ),
+			'weekly_loss_kg'       => __( 'Weekly loss estimate', 'blc-wellness-management-system' ),
+			'weeks_to_goal'        => __( 'Weeks to goal', 'blc-wellness-management-system' ),
+			'estimated_goal_date'  => __( 'Estimated goal date', 'blc-wellness-management-system' ),
+		);
+		foreach ( $result_labels as $key => $label ) {
+			if ( ! isset( $results[ $key ] ) || null === $results[ $key ] ) {
+				continue;
+			}
+			$value = in_array( $key, array( 'bmr_calories', 'maintenance_calories', 'calorie_target', 'daily_deficit' ), true )
+				? number_format_i18n( (int) $results[ $key ] ) . ' kcal'
+				: ( 'weekly_loss_kg' === $key ? self::format_weight( $results[ $key ], $units ) . '/' . __( 'week', 'blc-wellness-management-system' ) : $results[ $key ] );
+			echo '<dt>' . esc_html( $label ) . '</dt><dd>' . esc_html( $value ) . '</dd>';
+		}
+		if ( ! empty( $results['warnings'] ) && is_array( $results['warnings'] ) ) {
+			echo '<dt>' . esc_html__( 'Safety notes', 'blc-wellness-management-system' ) . '</dt><dd>' . esc_html( implode( ' ', $results['warnings'] ) ) . '</dd>';
+		}
+		echo '</dl><h4>' . esc_html__( 'Nutrition preferences', 'blc-wellness-management-system' ) . '</h4><dl>';
+		$nutrition_labels = array(
+			'dietary_preference' => __( 'Dietary preference', 'blc-wellness-management-system' ),
+			'allergies'          => __( 'Allergies', 'blc-wellness-management-system' ),
+			'foods_avoided'      => __( 'Foods avoided', 'blc-wellness-management-system' ),
+			'meals_per_day'      => __( 'Meals per day', 'blc-wellness-management-system' ),
+			'cuisine'            => __( 'Cuisine preference', 'blc-wellness-management-system' ),
+			'protein_g'          => __( 'Protein target', 'blc-wellness-management-system' ),
+			'carbs_g'            => __( 'Carbohydrate target', 'blc-wellness-management-system' ),
+			'fat_g'              => __( 'Fat target', 'blc-wellness-management-system' ),
+		);
+		foreach ( $nutrition_labels as $key => $label ) {
+			if ( ! isset( $nutrition[ $key ] ) || '' === $nutrition[ $key ] ) {
+				continue;
+			}
+			$value = in_array( $key, array( 'protein_g', 'carbs_g', 'fat_g' ), true ) ? $nutrition[ $key ] . ' g' : $nutrition[ $key ];
+			echo '<dt>' . esc_html( $label ) . '</dt><dd>' . esc_html( $value ) . '</dd>';
+		}
+		if ( ! empty( $nutrition['meals'] ) && is_array( $nutrition['meals'] ) ) {
+			echo '<dt>' . esc_html__( 'Meal ideas', 'blc-wellness-management-system' ) . '</dt><dd>' . esc_html( implode( ' ', $nutrition['meals'] ) ) . '</dd>';
+		}
+		echo '</dl><h4>' . esc_html__( 'Progress entries', 'blc-wellness-management-system' ) . '</h4>';
+		if ( empty( $progress ) ) {
+			echo '<p>' . esc_html__( 'No check-ins recorded.', 'blc-wellness-management-system' ) . '</p>';
+		} else {
+			echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Date', 'blc-wellness-management-system' ) . '</th><th>' . esc_html__( 'Weight', 'blc-wellness-management-system' ) . '</th><th>' . esc_html__( 'Calories', 'blc-wellness-management-system' ) . '</th><th>' . esc_html__( 'Exercise', 'blc-wellness-management-system' ) . '</th></tr></thead><tbody>';
+			foreach ( $progress as $entry ) {
+				echo '<tr><td>' . esc_html( isset( $entry['date'] ) ? $entry['date'] : '—' ) . '</td><td>' . esc_html( self::format_weight( isset( $entry['weight_kg'] ) ? $entry['weight_kg'] : null, $units ) ) . '</td><td>' . esc_html( isset( $entry['calories'] ) && null !== $entry['calories'] ? number_format_i18n( (int) $entry['calories'] ) : '—' ) . '</td><td>' . esc_html( isset( $entry['exercise_minutes'] ) && null !== $entry['exercise_minutes'] ? number_format_i18n( (int) $entry['exercise_minutes'] ) . ' min' : '—' ) . '</td></tr>';
+			}
+			echo '</tbody></table>';
+		}
+		echo '</div>';
+	}
+
+	/** Format canonical kilograms in the user's chosen display units. */
+	private static function format_weight( $weight_kg, $units ) {
+		if ( null === $weight_kg || ! is_numeric( $weight_kg ) ) {
+			return '—';
+		}
+		if ( 'imperial' === $units ) {
+			return number_format_i18n( (float) $weight_kg * 2.20462262, 1 ) . ' lb';
+		}
+		return number_format_i18n( (float) $weight_kg, 1 ) . ' kg';
 	}
 
 	/** Create or update the user goals table. */
