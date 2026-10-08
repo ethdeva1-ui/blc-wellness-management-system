@@ -144,13 +144,17 @@ class BLC_Weightloss_Management {
 			echo '<dialog class="blc-weightloss-dialog" id="' . esc_attr( $dialog_id ) . '" aria-labelledby="' . esc_attr( $dialog_id . '-title' ) . '"><div class="blc-weightloss-dialog__header"><div><p class="blc-weightloss-dialog__eyebrow">' . esc_html__( 'Saved weight loss plan', 'blc-wellness-management-system' ) . '</p><h2 id="' . esc_attr( $dialog_id . '-title' ) . '">' . esc_html( $name ) . '</h2><p>' . esc_html( $email ) . '</p></div><button type="button" class="blc-weightloss-close" aria-label="' . esc_attr__( 'Close details', 'blc-wellness-management-system' ) . '">&times;</button></div><div class="blc-weightloss-dialog__body">';
 			$details_panel_id = $dialog_id . '-details-panel';
 			$diet_panel_id    = $dialog_id . '-diet-panel';
+			$orders_panel_id  = $dialog_id . '-orders-panel';
 			echo '<div class="blc-weightloss-tabs" data-weightloss-tabs><div class="blc-weightloss-tabs__nav" role="tablist" aria-label="' . esc_attr__( 'User plan data', 'blc-wellness-management-system' ) . '">';
 			echo '<button type="button" class="blc-weightloss-tab is-active" role="tab" id="' . esc_attr( $details_panel_id . '-tab' ) . '" aria-controls="' . esc_attr( $details_panel_id ) . '" aria-selected="true" tabindex="0">' . esc_html__( 'Plan Details', 'blc-wellness-management-system' ) . '</button>';
-			echo '<button type="button" class="blc-weightloss-tab" role="tab" id="' . esc_attr( $diet_panel_id . '-tab' ) . '" aria-controls="' . esc_attr( $diet_panel_id ) . '" aria-selected="false" tabindex="-1">' . esc_html__( 'Recommended Diet Plan', 'blc-wellness-management-system' ) . '</button></div>';
+			echo '<button type="button" class="blc-weightloss-tab" role="tab" id="' . esc_attr( $diet_panel_id . '-tab' ) . '" aria-controls="' . esc_attr( $diet_panel_id ) . '" aria-selected="false" tabindex="-1">' . esc_html__( 'Recommended Diet Plan', 'blc-wellness-management-system' ) . '</button>';
+			echo '<button type="button" class="blc-weightloss-tab" role="tab" id="' . esc_attr( $orders_panel_id . '-tab' ) . '" aria-controls="' . esc_attr( $orders_panel_id ) . '" aria-selected="false" tabindex="-1">' . esc_html__( 'WooCommerce Orders', 'blc-wellness-management-system' ) . '</button></div>';
 			echo '<div class="blc-weightloss-tab-panel" id="' . esc_attr( $details_panel_id ) . '" role="tabpanel" aria-labelledby="' . esc_attr( $details_panel_id . '-tab' ) . '">';
 			self::render_admin_record_details( $profile, $results, $nutrition, $progress, $units );
 			echo '</div><div class="blc-weightloss-tab-panel" id="' . esc_attr( $diet_panel_id ) . '" role="tabpanel" aria-labelledby="' . esc_attr( $diet_panel_id . '-tab' ) . '" hidden>';
 			self::render_admin_recommended_diet( $nutrition );
+			echo '</div><div class="blc-weightloss-tab-panel" id="' . esc_attr( $orders_panel_id ) . '" role="tabpanel" aria-labelledby="' . esc_attr( $orders_panel_id . '-tab' ) . '" hidden>';
+			self::render_admin_user_orders( (int) $record['user_id'] );
 			echo '</div></div>';
 			echo '</div></dialog></td></tr>';
 		}
@@ -174,6 +178,82 @@ class BLC_Weightloss_Management {
 					)
 				)
 			) . '</div></div>';
+		}
+		echo '</div>';
+	}
+
+	/** Render recent WooCommerce orders for a WordPress user. */
+	private static function render_admin_user_orders( $user_id ) {
+		if ( ! function_exists( 'wc_get_orders' ) ) {
+			echo '<p>' . esc_html__( 'WooCommerce is not active, so order data is unavailable.', 'blc-wellness-management-system' ) . '</p>';
+			return;
+		}
+
+		static $orders_cache = array();
+		$user_id = absint( $user_id );
+		if ( ! array_key_exists( $user_id, $orders_cache ) ) {
+			$orders_cache[ $user_id ] = wc_get_orders(
+				array(
+					'customer_id' => $user_id,
+					'limit'       => 20,
+					'orderby'     => 'date',
+					'order'       => 'DESC',
+				)
+			);
+		}
+		$orders = $orders_cache[ $user_id ];
+		if ( empty( $orders ) || ! is_array( $orders ) ) {
+			echo '<p>' . esc_html__( 'No WooCommerce orders were found for this user.', 'blc-wellness-management-system' ) . '</p>';
+			return;
+		}
+
+		echo '<div class="blc-wellness-admin-details"><h4>' . esc_html__( 'Recent orders', 'blc-wellness-management-system' ) . '</h4><p class="description">' . esc_html__( 'Showing up to the 20 most recent orders associated with this WordPress account.', 'blc-wellness-management-system' ) . '</p>';
+		foreach ( $orders as $order ) {
+			if ( ! is_object( $order ) || ! method_exists( $order, 'get_id' ) ) {
+				continue;
+			}
+			$status = $order->get_status();
+			$status_label = function_exists( 'wc_get_order_status_name' ) ? wc_get_order_status_name( $status ) : ucfirst( $status );
+			$order_date = $order->get_date_created();
+			$date_label = $order_date && function_exists( 'wc_format_datetime' ) ? wc_format_datetime( $order_date ) : '—';
+			echo '<section class="blc-weightloss-order"><h5>' . sprintf( esc_html__( 'Order #%d', 'blc-wellness-management-system' ), (int) $order->get_id() ) . '</h5><dl>';
+			echo '<dt>' . esc_html__( 'Date', 'blc-wellness-management-system' ) . '</dt><dd>' . esc_html( $date_label ) . '</dd>';
+			echo '<dt>' . esc_html__( 'Status', 'blc-wellness-management-system' ) . '</dt><dd>' . esc_html( $status_label ) . '</dd>';
+			echo '<dt>' . esc_html__( 'Total', 'blc-wellness-management-system' ) . '</dt><dd>' . wp_kses_post( $order->get_formatted_order_total() ) . '</dd>';
+			echo '<dt>' . esc_html__( 'Products', 'blc-wellness-management-system' ) . '</dt><dd><ul class="blc-weightloss-order-products">';
+			foreach ( $order->get_items() as $item ) {
+				if ( ! is_object( $item ) || ! method_exists( $item, 'get_name' ) ) {
+					continue;
+				}
+				$quantity = method_exists( $item, 'get_quantity' ) ? absint( $item->get_quantity() ) : 1;
+				$product  = method_exists( $item, 'get_product' ) ? $item->get_product() : false;
+				echo '<li class="blc-weightloss-order-product"><strong>' . esc_html( $item->get_name() ) . '</strong><dl>';
+				if ( $product && is_object( $product ) && method_exists( $product, 'get_sku' ) && $product->get_sku() ) {
+					echo '<dt>' . esc_html__( 'SKU', 'blc-wellness-management-system' ) . '</dt><dd>' . esc_html( $product->get_sku() ) . '</dd>';
+				}
+				if ( $product && is_object( $product ) && method_exists( $product, 'get_short_description' ) ) {
+					$short_description = trim( wp_strip_all_tags( $product->get_short_description() ) );
+					if ( '' !== $short_description ) {
+						echo '<dt>' . esc_html__( 'Description', 'blc-wellness-management-system' ) . '</dt><dd>' . esc_html( $short_description ) . '</dd>';
+					}
+				}
+				if ( method_exists( $item, 'get_formatted_meta_data' ) ) {
+					$item_meta = $item->get_formatted_meta_data( '' );
+					foreach ( $item_meta as $meta ) {
+						if ( empty( $meta->display_key ) || ! isset( $meta->display_value ) ) {
+							continue;
+						}
+						echo '<dt>' . esc_html( wp_strip_all_tags( $meta->display_key ) ) . '</dt><dd>' . esc_html( wp_strip_all_tags( $meta->display_value ) ) . '</dd>';
+					}
+				}
+				$item_total = method_exists( $item, 'get_total' ) ? (float) $item->get_total() : 0;
+				$item_tax   = method_exists( $item, 'get_total_tax' ) ? (float) $item->get_total_tax() : 0;
+				$currency   = method_exists( $order, 'get_currency' ) ? $order->get_currency() : '';
+				$line_total = function_exists( 'wc_price' ) ? wc_price( $item_total + $item_tax, array( 'currency' => $currency ) ) : number_format_i18n( $item_total + $item_tax, 2 );
+				echo '<dt>' . esc_html__( 'Quantity', 'blc-wellness-management-system' ) . '</dt><dd>' . esc_html( number_format_i18n( $quantity ) ) . '</dd>';
+				echo '<dt>' . esc_html__( 'Line total', 'blc-wellness-management-system' ) . '</dt><dd>' . wp_kses_post( $line_total ) . '</dd></dl></li>';
+			}
+			echo '</ul></dd></dl></section>';
 		}
 		echo '</div>';
 	}

@@ -158,6 +158,52 @@
 	overflow: hidden;
 }
 
+.blc-weightloss-order {
+	margin: 16px 0;
+	padding: 16px;
+	border: 1px solid #e1ebe4;
+	border-radius: 12px;
+	background: #fff;
+}
+
+.blc-weightloss-order h5 {
+	margin: 0 0 12px;
+	color: #245d45;
+	font-size: 14px;
+}
+
+.blc-weightloss-order dl {
+	grid-template-columns: minmax(100px, .45fr) minmax(0, 1.6fr);
+}
+
+.blc-weightloss-order ul {
+	margin: 0;
+	padding-left: 18px;
+}
+
+.blc-weightloss-order ul.blc-weightloss-order-products {
+	padding: 0;
+	list-style: none;
+}
+
+.blc-weightloss-order-product {
+	padding: 12px 0;
+	border-bottom: 1px solid #e8efea;
+}
+
+.blc-weightloss-order-product:last-child {
+	border-bottom: 0;
+}
+
+.blc-weightloss-order-product > strong {
+	display: block;
+	margin-bottom: 8px;
+}
+
+.blc-weightloss-order-product dl {
+	font-size: 13px;
+}
+
 @media (max-width: 600px) {
 	.blc-weightloss-dialog {
 		width: calc(100vw - 20px);
