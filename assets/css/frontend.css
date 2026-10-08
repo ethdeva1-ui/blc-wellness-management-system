@@ -730,6 +730,126 @@
 	display: none !important;
 }
 
+.blc-wl-diet-actions {
+	display: flex;
+	align-items: center;
+	margin: 0.5rem 0 1rem;
+}
+
+.blc-wl-nutrition [data-diet-form] {
+	margin-bottom: 1.5rem;
+	padding-bottom: 1.25rem;
+	border-bottom: 1px solid var(--blc-wl-border);
+}
+
+.blc-wl-nutrition .blc-wl-selected-diet {
+	margin-bottom: 1.5rem;
+}
+
+.blc-wl-nutrition .blc-wl-diet-button {
+	box-sizing: border-box;
+	width: auto;
+	min-width: 15rem;
+	max-width: 100%;
+	white-space: normal;
+	text-align: center;
+	line-height: 1.3;
+}
+
+.blc-wl-nutrition [data-diet-form] > .blc-wl-diet-button {
+	margin-top: 0.25rem;
+}
+
+.blc-wl-recipe-button {
+	margin-top: 0.5rem;
+}
+
+.blc-wl-recipe-dialog {
+	width: min(38rem, calc(100% - 2rem));
+	max-width: 38rem;
+	max-height: min(85vh, 42rem);
+	padding: 0;
+	border: 1px solid var(--blc-wl-border);
+	border-radius: 1rem;
+	color: var(--blc-wl-ink);
+	background: #fff;
+	box-shadow: 0 1.5rem 4rem rgba(20, 35, 28, 0.24);
+}
+
+.blc-wl-recipe-dialog::backdrop {
+	background: rgba(18, 30, 24, 0.58);
+}
+
+.blc-wl-recipe-dialog__content {
+	position: relative;
+	max-height: min(85vh, 42rem);
+	padding: 2rem;
+	overflow-y: auto;
+	line-height: 1.65;
+}
+
+.blc-wl-recipe-dialog__content h3 {
+	margin: 0 2rem 1rem 0;
+	color: var(--blc-wl-ink);
+}
+
+.blc-wl-recipe-dialog__content p {
+	margin: 0 0 1rem;
+}
+
+.blc-wl-recipe-list {
+	margin: 0 0 1.5rem;
+	padding: 0;
+	list-style: none;
+}
+
+.blc-wl-recipe-list li {
+	padding: 0;
+	border-bottom: 1px solid var(--blc-wl-border);
+}
+
+.blc-wl-recipe-list details > summary {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.75rem 0;
+	cursor: pointer;
+}
+
+.blc-wl-recipe-list details > summary span {
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+}
+
+.blc-wl-recipe-list details > summary strong {
+	flex: 0 0 auto;
+	color: var(--blc-wl-accent);
+	white-space: nowrap;
+}
+
+.blc-wl-recipe-detail {
+	padding: 0 0.75rem 0.5rem;
+	font-size: 0.95rem;
+}
+
+.blc-wl-recipe-dialog__close {
+	position: absolute;
+	top: 0.8rem;
+	right: 0.8rem;
+	display: inline-flex;
+	width: 2.5rem;
+	height: 2.5rem;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--blc-wl-border);
+	border-radius: 50%;
+	color: var(--blc-wl-ink);
+	background: #fff;
+	font-size: 1.5rem;
+	cursor: pointer;
+}
+
 .blc-wl-form h5 {
 	margin-top: 0;
 }
@@ -802,6 +922,19 @@
 	.blc-wl-button {
 		padding: 0.7rem 0.85rem;
 		font-size: 0.92rem;
+	}
+
+	.blc-wl-diet-actions {
+		width: 100%;
+	}
+
+	.blc-wl-nutrition .blc-wl-diet-button {
+		width: 100%;
+		min-width: 0;
+	}
+
+	.blc-wl-recipe-dialog__content {
+		padding: 1.5rem;
 	}
 }
 

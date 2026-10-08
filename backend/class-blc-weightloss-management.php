@@ -42,8 +42,8 @@ class BLC_Weightloss_Management {
 			return;
 		}
 
-		wp_enqueue_style( 'blc-weightloss-admin', plugins_url( '../assets/css/weightloss-admin.css', __FILE__ ), array(), '2.1.0' );
-		wp_enqueue_script( 'blc-weightloss-admin', plugins_url( '../assets/js/weightloss-admin.js', __FILE__ ), array(), '2.1.0', true );
+		wp_enqueue_style( 'blc-weightloss-admin', plugins_url( '../assets/css/weightloss-admin.css', __FILE__ ), array(), BLC_WELLNESS_VERSION );
+		wp_enqueue_script( 'blc-weightloss-admin', plugins_url( '../assets/js/weightloss-admin.js', __FILE__ ), array(), BLC_WELLNESS_VERSION, true );
 	}
 
 	/** Render saved plans and their associated WordPress users. */
@@ -200,6 +200,7 @@ class BLC_Weightloss_Management {
 		}
 		echo '</dl><h4>' . esc_html__( 'Nutrition preferences', 'blc-wellness-management-system' ) . '</h4><dl>';
 		$nutrition_labels = array(
+			'diet_type'          => __( 'Recommended diet type', 'blc-wellness-management-system' ),
 			'dietary_preference' => __( 'Dietary preference', 'blc-wellness-management-system' ),
 			'allergies'          => __( 'Allergies', 'blc-wellness-management-system' ),
 			'foods_avoided'      => __( 'Foods avoided', 'blc-wellness-management-system' ),
@@ -291,11 +292,12 @@ class BLC_Weightloss_Management {
 	 */
 	public static function render( $hidden = false ) {
 		$handle = 'blc-weightloss-management';
+		$script_path = dirname( __DIR__ ) . '/frontend/weightloss-management.js';
 		wp_enqueue_script(
 			$handle,
 			plugins_url( 'frontend/weightloss-management.js', dirname( __DIR__ ) . '/index.php' ),
 			array(),
-			'2.0.0',
+			file_exists( $script_path ) ? (string) filemtime( $script_path ) : BLC_WELLNESS_VERSION,
 			true
 		);
 		wp_localize_script(
@@ -578,7 +580,14 @@ class BLC_Weightloss_Management {
 	private static function sanitize_nutrition( $input, $profile, $results ) {
 		$input = is_array( $input ) ? $input : array();
 		$meals = isset( $input['meals_per_day'] ) && is_scalar( $input['meals_per_day'] ) ? absint( $input['meals_per_day'] ) : 3;
+		$allowed_diet_types = array(
+			'Balanced Diet', 'Ketogenic (Keto) Diet', 'Paleo Diet', 'Vegetarian Diet', 'Vegan Diet',
+			'Mediterranean Diet', 'Intermittent Fasting', 'Low-Carb Diet', 'DASH Diet', 'Gluten-Free Diet',
+			'Raw Food Diet', 'Carnivore Diet', 'Flexitarian Diet', 'Whole30 Diet', 'Zone Diet',
+		);
+		$diet_type = isset( $input['diet_type'] ) && is_scalar( $input['diet_type'] ) ? sanitize_text_field( (string) $input['diet_type'] ) : '';
 		$nutrition = array(
+			'diet_type'          => in_array( $diet_type, $allowed_diet_types, true ) ? $diet_type : '',
 			'dietary_preference' => isset( $input['dietary_preference'] ) && is_scalar( $input['dietary_preference'] ) ? sanitize_text_field( (string) $input['dietary_preference'] ) : '',
 			'allergies'          => isset( $input['allergies'] ) && is_scalar( $input['allergies'] ) ? sanitize_textarea_field( (string) $input['allergies'] ) : '',
 			'foods_avoided'      => isset( $input['foods_avoided'] ) && is_scalar( $input['foods_avoided'] ) ? sanitize_textarea_field( (string) $input['foods_avoided'] ) : '',
