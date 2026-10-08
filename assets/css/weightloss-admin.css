@@ -71,6 +71,46 @@
 	padding: 22px 28px 30px;
 }
 
+.blc-weightloss-tabs__nav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 0 0 22px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #dce9e0;
+}
+
+.blc-weightloss-tab {
+	padding: 10px 15px;
+	border: 1px solid #cbdacf;
+	border-radius: 8px;
+	background: #fff;
+	color: #245d45;
+	font: inherit;
+	font-weight: 650;
+	cursor: pointer;
+}
+
+.blc-weightloss-tab.is-active,
+.blc-weightloss-tab[aria-selected="true"] {
+	border-color: #34745b;
+	background: #eaf5ee;
+	box-shadow: inset 0 0 0 1px #34745b;
+}
+
+.blc-weightloss-tab:focus-visible {
+	outline: 3px solid rgba(52, 116, 91, .25);
+	outline-offset: 2px;
+}
+
+.blc-weightloss-tab-panel[hidden] {
+	display: none !important;
+}
+
+.widefat tbody tr.blc-weightloss-user-group-start > td {
+	border-top: 2px solid #cbdacf;
+}
+
 .blc-wellness-admin-details h4 {
 	margin: 24px 0 10px;
 	color: #245d45;

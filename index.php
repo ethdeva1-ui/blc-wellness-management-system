@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BLC Wellness Management System
  * Description: Wellness management system for Balanced life care.
- * Version: 2.2.8
+ * Version: 2.3.0
  * Plugin URI: https://flowbrixai.com/
  * Author: Ethelyn Matias
  * Author URI: https://flowbrixai.com/
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'BLC_WELLNESS_VERSION', '2.2.8' );
+define( 'BLC_WELLNESS_VERSION', '2.3.0' );
 
 require_once __DIR__ . '/backend/class-blc-drink-calculator.php';
 require_once __DIR__ . '/backend/class-blc-weightloss-management.php';

@@ -72,13 +72,17 @@ class BLC_Weightloss_Management {
 			);
 		}
 
-		$count_sql = "SELECT COUNT(*) FROM {$table} g LEFT JOIN {$users_table} u ON u.ID = g.user_id {$where}";
+		$count_sql = "SELECT COUNT(DISTINCT g.user_id) FROM {$table} g LEFT JOIN {$users_table} u ON u.ID = g.user_id {$where}";
 		$total     = (int) $wpdb->get_var( $count_sql );
-		$list_sql  = "SELECT g.*, u.display_name, u.user_login, u.user_email FROM {$table} g LEFT JOIN {$users_table} u ON u.ID = g.user_id {$where} ORDER BY g.updated_at DESC, g.id DESC LIMIT %d OFFSET %d";
-		$records   = $wpdb->get_results(
-			$wpdb->prepare( $list_sql, $per_page, $offset ),
-			ARRAY_A
-		);
+		$user_sql  = "SELECT g.user_id, MAX(g.updated_at) AS last_updated FROM {$table} g LEFT JOIN {$users_table} u ON u.ID = g.user_id {$where} GROUP BY g.user_id ORDER BY last_updated DESC, g.user_id ASC LIMIT %d OFFSET %d";
+		$user_page = $wpdb->get_col( $wpdb->prepare( $user_sql, $per_page, $offset ) );
+		$user_ids  = array_map( 'absint', is_array( $user_page ) ? $user_page : array() );
+		$records   = array();
+		if ( ! empty( $user_ids ) ) {
+			$user_placeholders = implode( ', ', array_fill( 0, count( $user_ids ), '%d' ) );
+			$list_sql          = "SELECT g.*, u.display_name, u.user_login, u.user_email FROM {$table} g LEFT JOIN {$users_table} u ON u.ID = g.user_id WHERE g.user_id IN ({$user_placeholders}) ORDER BY u.display_name ASC, g.user_id ASC, g.updated_at DESC, g.id DESC";
+			$records           = $wpdb->get_results( $wpdb->prepare( $list_sql, $user_ids ), ARRAY_A );
+		}
 		$total_pages = max( 1, (int) ceil( $total / $per_page ) );
 
 		echo '<div class="wrap"><h1>' . esc_html__( 'Weight Loss Management Data', 'blc-wellness-management-system' ) . '</h1>';
@@ -103,6 +107,12 @@ class BLC_Weightloss_Management {
 		echo '<th>' . esc_html__( 'Last updated', 'blc-wellness-management-system' ) . '</th>';
 		echo '<th>' . esc_html__( 'Saved details', 'blc-wellness-management-system' ) . '</th>';
 		echo '</tr></thead><tbody>';
+		$user_record_counts = array();
+		foreach ( $records as $record ) {
+			$user_key = (string) $record['user_id'];
+			$user_record_counts[ $user_key ] = isset( $user_record_counts[ $user_key ] ) ? $user_record_counts[ $user_key ] + 1 : 1;
+		}
+		$rendered_users = array();
 
 		foreach ( $records as $record ) {
 			$profile   = json_decode( $record['profile_json'], true );
@@ -117,16 +127,31 @@ class BLC_Weightloss_Management {
 			$name      = ! empty( $record['display_name'] ) ? $record['display_name'] : __( 'Deleted user', 'blc-wellness-management-system' );
 			$email     = isset( $record['user_email'] ) ? $record['user_email'] : '';
 			$dialog_id = 'blc-weightloss-record-' . (int) $record['id'];
+			$user_key  = (string) $record['user_id'];
+			$is_first_user_record = ! isset( $rendered_users[ $user_key ] );
 
-			echo '<tr><td><strong>' . esc_html( $name ) . '</strong><br><span class="description">' . esc_html( $email ) . '</span><br><span class="description">' . sprintf( esc_html__( 'User ID: %d · Plan ID: %d', 'blc-wellness-management-system' ), (int) $record['user_id'], (int) $record['id'] ) . '</span></td>';
+			echo '<tr' . ( $is_first_user_record ? ' class="blc-weightloss-user-group-start"' : '' ) . '>';
+			if ( $is_first_user_record ) {
+				echo '<td rowspan="' . esc_attr( $user_record_counts[ $user_key ] ) . '"><strong>' . esc_html( $name ) . '</strong><br><span class="description">' . esc_html( $email ) . '</span><br><span class="description">' . sprintf( esc_html__( 'User ID: %d', 'blc-wellness-management-system' ), (int) $record['user_id'] ) . '</span></td>';
+				$rendered_users[ $user_key ] = true;
+			}
 			echo '<td>' . esc_html( self::format_weight( isset( $profile['current_weight_kg'] ) ? $profile['current_weight_kg'] : null, $units ) ) . '</td>';
 			echo '<td>' . esc_html( self::format_weight( isset( $profile['goal_weight_kg'] ) ? $profile['goal_weight_kg'] : null, $units ) ) . '</td>';
 			echo '<td>' . esc_html( isset( $results['maintenance_calories'] ) ? number_format_i18n( (int) $results['maintenance_calories'] ) . ' kcal/day' : '—' ) . '</td>';
 			echo '<td>' . esc_html( ! empty( $results['calorie_target'] ) ? number_format_i18n( (int) $results['calorie_target'] ) . ' kcal/day' : '—' ) . '</td>';
 			echo '<td>' . esc_html( mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $record['updated_at'] ) ) . '</td>';
-			echo '<td><button type="button" class="button button-primary blc-weightloss-open" aria-haspopup="dialog" aria-controls="' . esc_attr( $dialog_id ) . '">' . esc_html__( 'View details', 'blc-wellness-management-system' ) . '</button>';
+			echo '<td><span class="description">' . sprintf( esc_html__( 'Plan ID: %d', 'blc-wellness-management-system' ), (int) $record['id'] ) . '</span><br><button type="button" class="button button-primary blc-weightloss-open" aria-haspopup="dialog" aria-controls="' . esc_attr( $dialog_id ) . '">' . esc_html__( 'View details', 'blc-wellness-management-system' ) . '</button>';
 			echo '<dialog class="blc-weightloss-dialog" id="' . esc_attr( $dialog_id ) . '" aria-labelledby="' . esc_attr( $dialog_id . '-title' ) . '"><div class="blc-weightloss-dialog__header"><div><p class="blc-weightloss-dialog__eyebrow">' . esc_html__( 'Saved weight loss plan', 'blc-wellness-management-system' ) . '</p><h2 id="' . esc_attr( $dialog_id . '-title' ) . '">' . esc_html( $name ) . '</h2><p>' . esc_html( $email ) . '</p></div><button type="button" class="blc-weightloss-close" aria-label="' . esc_attr__( 'Close details', 'blc-wellness-management-system' ) . '">&times;</button></div><div class="blc-weightloss-dialog__body">';
+			$details_panel_id = $dialog_id . '-details-panel';
+			$diet_panel_id    = $dialog_id . '-diet-panel';
+			echo '<div class="blc-weightloss-tabs" data-weightloss-tabs><div class="blc-weightloss-tabs__nav" role="tablist" aria-label="' . esc_attr__( 'User plan data', 'blc-wellness-management-system' ) . '">';
+			echo '<button type="button" class="blc-weightloss-tab is-active" role="tab" id="' . esc_attr( $details_panel_id . '-tab' ) . '" aria-controls="' . esc_attr( $details_panel_id ) . '" aria-selected="true" tabindex="0">' . esc_html__( 'Plan Details', 'blc-wellness-management-system' ) . '</button>';
+			echo '<button type="button" class="blc-weightloss-tab" role="tab" id="' . esc_attr( $diet_panel_id . '-tab' ) . '" aria-controls="' . esc_attr( $diet_panel_id ) . '" aria-selected="false" tabindex="-1">' . esc_html__( 'Recommended Diet Plan', 'blc-wellness-management-system' ) . '</button></div>';
+			echo '<div class="blc-weightloss-tab-panel" id="' . esc_attr( $details_panel_id ) . '" role="tabpanel" aria-labelledby="' . esc_attr( $details_panel_id . '-tab' ) . '">';
 			self::render_admin_record_details( $profile, $results, $nutrition, $progress, $units );
+			echo '</div><div class="blc-weightloss-tab-panel" id="' . esc_attr( $diet_panel_id ) . '" role="tabpanel" aria-labelledby="' . esc_attr( $diet_panel_id . '-tab' ) . '" hidden>';
+			self::render_admin_recommended_diet( $nutrition );
+			echo '</div></div>';
 			echo '</div></dialog></td></tr>';
 		}
 
@@ -151,6 +176,51 @@ class BLC_Weightloss_Management {
 			) . '</div></div>';
 		}
 		echo '</div>';
+	}
+
+	/** Render diet recommendation and related nutrition preferences in the admin tab. */
+	private static function render_admin_recommended_diet( $nutrition ) {
+		$diet_type = isset( $nutrition['diet_type'] ) ? (string) $nutrition['diet_type'] : '';
+		$diet_descriptions = array(
+			'Balanced Diet'             => __( 'A flexible pattern that includes vegetables, fruits, whole grains, protein foods, and healthy fats without eliminating whole food groups.', 'blc-wellness-management-system' ),
+			'Ketogenic (Keto) Diet'     => __( 'A very-low-carbohydrate, high-fat pattern intended to shift the body toward using fat and ketones for energy.', 'blc-wellness-management-system' ),
+			'Paleo Diet'                => __( 'Emphasizes meat, seafood, vegetables, fruits, nuts, and seeds while excluding grains, legumes, and most dairy.', 'blc-wellness-management-system' ),
+			'Vegetarian Diet'           => __( 'Plant-forward eating that excludes meat and seafood; versions may include eggs and dairy.', 'blc-wellness-management-system' ),
+			'Vegan Diet'                => __( 'Excludes animal-derived foods and focuses entirely on plant foods; vitamin B12 and other nutrients need planning.', 'blc-wellness-management-system' ),
+			'Mediterranean Diet'        => __( 'A flexible, plant-forward pattern emphasizing vegetables, fruits, whole grains, legumes, nuts, olive oil, and fish.', 'blc-wellness-management-system' ),
+			'Intermittent Fasting'      => __( 'Alternates planned eating and fasting periods; food quality still matters and fasting is not appropriate for everyone.', 'blc-wellness-management-system' ),
+			'Low-Carb Diet'             => __( 'Reduces carbohydrate intake to a variable degree, often limiting sugary and refined foods.', 'blc-wellness-management-system' ),
+			'DASH Diet'                 => __( 'Emphasizes nutrient-rich foods while limiting sodium and foods high in saturated fat and added sugar.', 'blc-wellness-management-system' ),
+			'Gluten-Free Diet'          => __( 'Eliminates gluten found primarily in wheat, barley, and rye; medically necessary for celiac disease.', 'blc-wellness-management-system' ),
+			'Raw Food Diet'             => __( 'Focuses on foods that are raw or minimally heated; restrictive versions may make adequate nutrition difficult.', 'blc-wellness-management-system' ),
+			'Carnivore Diet'            => __( 'Consists mainly or entirely of animal foods and excludes plant foods; long-term evidence is limited.', 'blc-wellness-management-system' ),
+			'Flexitarian Diet'          => __( 'Centers meals on plant foods while allowing occasional meat, fish, or other animal products.', 'blc-wellness-management-system' ),
+			'Whole30 Diet'              => __( 'A 30-day elimination-style program that removes several food groups before reintroducing foods; it is not intended as a permanent plan.', 'blc-wellness-management-system' ),
+			'Zone Diet'                 => __( 'A structured approach that traditionally targets about 40% carbohydrate, 30% protein, and 30% fat at meals.', 'blc-wellness-management-system' ),
+		);
+
+		echo '<div class="blc-wellness-admin-details"><h4>' . esc_html__( 'Recommended diet', 'blc-wellness-management-system' ) . '</h4><dl>';
+		if ( '' === $diet_type ) {
+			echo '<dt>' . esc_html__( 'Selection', 'blc-wellness-management-system' ) . '</dt><dd>' . esc_html__( 'No diet type selected.', 'blc-wellness-management-system' ) . '</dd>';
+		} else {
+			echo '<dt>' . esc_html__( 'Diet type', 'blc-wellness-management-system' ) . '</dt><dd>' . esc_html( $diet_type ) . '</dd>';
+			if ( isset( $diet_descriptions[ $diet_type ] ) ) {
+				echo '<dt>' . esc_html__( 'About this diet', 'blc-wellness-management-system' ) . '</dt><dd>' . esc_html( $diet_descriptions[ $diet_type ] ) . '</dd>';
+			}
+		}
+		$labels = array(
+			'dietary_preference' => __( 'Dietary preference', 'blc-wellness-management-system' ),
+			'allergies'          => __( 'Allergies', 'blc-wellness-management-system' ),
+			'foods_avoided'      => __( 'Foods avoided', 'blc-wellness-management-system' ),
+			'meals_per_day'      => __( 'Meals per day', 'blc-wellness-management-system' ),
+			'cuisine'            => __( 'Cuisine preference', 'blc-wellness-management-system' ),
+		);
+		foreach ( $labels as $key => $label ) {
+			if ( isset( $nutrition[ $key ] ) && '' !== $nutrition[ $key ] ) {
+				echo '<dt>' . esc_html( $label ) . '</dt><dd>' . esc_html( $nutrition[ $key ] ) . '</dd>';
+			}
+		}
+		echo '</dl><p class="description">' . esc_html__( 'This is the diet type the user selected. It is not a clinical prescription.', 'blc-wellness-management-system' ) . '</p></div>';
 	}
 
 	/** Render one saved record's questionnaire, plan, and progress details. */
@@ -200,7 +270,6 @@ class BLC_Weightloss_Management {
 		}
 		echo '</dl><h4>' . esc_html__( 'Nutrition preferences', 'blc-wellness-management-system' ) . '</h4><dl>';
 		$nutrition_labels = array(
-			'diet_type'          => __( 'Recommended diet type', 'blc-wellness-management-system' ),
 			'dietary_preference' => __( 'Dietary preference', 'blc-wellness-management-system' ),
 			'allergies'          => __( 'Allergies', 'blc-wellness-management-system' ),
 			'foods_avoided'      => __( 'Foods avoided', 'blc-wellness-management-system' ),
