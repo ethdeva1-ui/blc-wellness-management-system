@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BLC Wellness Management System
  * Description: Wellness management system for Balanced life care.
- * Version: 2.3.3
+ * Version: 2.3.4
  * Plugin URI: https://flowbrixai.com/
  * Author: Ethelyn Matias
  * Author URI: https://flowbrixai.com/
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'BLC_WELLNESS_VERSION', '2.3.3' );
+define( 'BLC_WELLNESS_VERSION', '2.3.4' );
 
 require_once __DIR__ . '/backend/class-blc-drink-calculator.php';
 require_once __DIR__ . '/backend/class-blc-weightloss-management.php';
@@ -93,6 +93,7 @@ function blc_wellness_render_menu_shortcode() {
 		'<ul role="tablist">' .
 		'<li role="presentation"><button type="button" id="blc-tab-rethink-your-drink" role="tab" aria-selected="true" aria-controls="rethink-your-drink" tabindex="0" data-blc-wellness-tab>' . esc_html__( 'Rethink Your Drink', 'blc-wellness-management-system' ) . '</button></li>' .
 		'<li role="presentation"><button type="button" id="blc-tab-weight-loss-management" role="tab" aria-selected="false" aria-controls="weight-loss-management" tabindex="-1" data-blc-wellness-tab>' . esc_html__( 'Weight Loss Management', 'blc-wellness-management-system' ) . '</button></li>' .
+		'<li role="presentation"><button type="button" id="blc-tab-events" role="tab" aria-selected="false" aria-controls="wellness-events" tabindex="-1" data-blc-wellness-tab>' . esc_html__( 'Events', 'blc-wellness-management-system' ) . '</button></li>' .
 		'</ul>' .
 		'</nav>';
 }
@@ -109,6 +110,13 @@ function blc_wellness_render_page_shortcode() {
 			'blc-tab-rethink-your-drink'
 		) .
 		BLC_Weightloss_Management::render( true ) .
+		blc_wellness_render_section_shortcode(
+			__( 'Events', 'blc-wellness-management-system' ),
+			'wellness-events',
+			BLC_Weightloss_Management::render_frontend_events(),
+			'blc-tab-events',
+			true
+		) .
 		'</div>';
 }
 
@@ -123,10 +131,11 @@ function blc_wellness_render_weight_loss_page_shortcode() {
 }
 
 /** Render a section heading for a wellness menu item. */
-function blc_wellness_render_section_shortcode( $title, $section_id, $content, $tab_id = '' ) {
+function blc_wellness_render_section_shortcode( $title, $section_id, $content, $tab_id = '', $hidden = false ) {
 	$tab_attributes = $tab_id ? ' role="tabpanel" aria-labelledby="' . esc_attr( $tab_id ) . '"' : '';
+	$hidden_attribute = $hidden ? ' hidden' : '';
 
-	return '<section id="' . esc_attr( $section_id ) . '" class="blc-wellness-section"' . $tab_attributes . '>' .
+	return '<section id="' . esc_attr( $section_id ) . '" class="blc-wellness-section"' . $tab_attributes . $hidden_attribute . '>' .
 		'<h2>' . esc_html( $title ) . '</h2>' .
 		do_shortcode( $content ) .
 		'</section>';

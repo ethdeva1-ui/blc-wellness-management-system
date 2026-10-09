@@ -13,32 +13,306 @@ if ( ! defined( 'ABSPATH' ) ) {
 class BLC_Weightloss_Management {
 	const REST_NAMESPACE = 'blc-wellness/v1';
 	const SCHEMA_VERSION = '1';
-	private static $admin_page_hook = '';
+	private static $admin_page_hook = array();
 
 	/** Register public hooks. */
 	public static function init() {
 		add_shortcode( 'blc_weightloss_management', array( __CLASS__, 'render_shortcode' ) );
 		add_action( 'rest_api_init', array( __CLASS__, 'register_rest_routes' ) );
+		add_action( 'init', array( __CLASS__, 'register_event_post_type' ) );
 		add_action( 'admin_menu', array( __CLASS__, 'register_admin_menu' ) );
 	}
 
-	/** Add the administrator-only weight loss data screen. */
+	/** Register private storage for wellness events. */
+	public static function register_event_post_type() {
+		register_post_type(
+			'blc_wellness_event',
+			array(
+				'public'       => false,
+				'show_ui'      => false,
+				'supports'     => array( 'title', 'editor' ),
+				'rewrite'      => false,
+				'query_var'    => false,
+				'capability_type' => 'post',
+			)
+		);
+	}
+
+	/** Add the administrator-only wellness program menu and its screens. */
 	public static function register_admin_menu() {
-		self::$admin_page_hook = add_menu_page(
-			__( 'Weight Loss Management Data', 'blc-wellness-management-system' ),
-			__( 'Weight Loss Data', 'blc-wellness-management-system' ),
+		$parent_hook = add_menu_page(
+			__( 'Wellness Program', 'blc-wellness-management-system' ),
+			__( 'Wellness Program', 'blc-wellness-management-system' ),
 			'manage_options',
-			'blc-weight-loss-data',
+			'blc-wellness-program',
 			array( __CLASS__, 'render_admin_page' ),
 			'dashicons-chart-area',
 			58
 		);
+		$data_hook = add_submenu_page(
+			'blc-wellness-program',
+			__( 'Weightloss Data', 'blc-wellness-management-system' ),
+			__( 'Weightloss Data', 'blc-wellness-management-system' ),
+			'manage_options',
+			'blc-weight-loss-data',
+			array( __CLASS__, 'render_admin_page' )
+		);
+		self::$admin_page_hook = array( $parent_hook, $data_hook );
+		add_submenu_page(
+			'blc-wellness-program',
+			__( 'Events', 'blc-wellness-management-system' ),
+			__( 'Events', 'blc-wellness-management-system' ),
+			'manage_options',
+			'blc-wellness-events',
+			array( __CLASS__, 'render_events_admin_page' )
+		);
+		add_submenu_page(
+			'blc-wellness-program',
+			__( 'Settings', 'blc-wellness-management-system' ),
+			__( 'Settings', 'blc-wellness-management-system' ),
+			'manage_options',
+			'blc-wellness-settings',
+			array( __CLASS__, 'render_settings_admin_page' )
+		);
+		// Keep the top-level landing screen useful while listing only requested child items.
+		remove_submenu_page( 'blc-wellness-program', 'blc-wellness-program' );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
+	}
+
+	/** Render the Events submenu placeholder. */
+	public static function render_events_admin_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage events.', 'blc-wellness-management-system' ) );
+		}
+
+		$message = '';
+		if ( isset( $_POST['blc_event_action'] ) && in_array( sanitize_key( wp_unslash( $_POST['blc_event_action'] ) ), array( 'save', 'update', 'delete' ), true ) ) {
+			$action  = sanitize_key( wp_unslash( $_POST['blc_event_action'] ) );
+			$message = 'delete' === $action ? self::delete_admin_event() : self::save_admin_event();
+		}
+		$edit_id = isset( $_GET['edit_event'] ) ? absint( $_GET['edit_event'] ) : 0;
+		$edit    = $edit_id ? get_post( $edit_id ) : null;
+		if ( ! $edit || 'blc_wellness_event' !== $edit->post_type ) {
+			$edit_id = 0;
+			$edit    = null;
+		}
+
+		$events = get_posts(
+			array(
+				'post_type'      => 'blc_wellness_event',
+				'post_status'    => array( 'publish', 'draft' ),
+				'posts_per_page' => -1,
+				'orderby'        => 'meta_value',
+				'meta_key'       => '_blc_event_start',
+				'order'          => 'ASC',
+			)
+		);
+
+		echo '<div class="wrap"><h1>' . esc_html__( 'Events', 'blc-wellness-management-system' ) . '</h1>';
+		if ( $message ) {
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $message ) . '</p></div>';
+		}
+		echo '<h2>' . esc_html( $edit ? __( 'Edit Event', 'blc-wellness-management-system' ) : __( 'Add Event', 'blc-wellness-management-system' ) ) . '</h2>';
+		echo '<form method="post" action=""><table class="form-table"><tbody>';
+		echo '<tr><th scope="row"><label for="blc-event-title">' . esc_html__( 'Event name', 'blc-wellness-management-system' ) . '</label></th><td><input id="blc-event-title" name="event_title" type="text" class="regular-text" value="' . esc_attr( $edit ? $edit->post_title : '' ) . '" required></td></tr>';
+		echo '<tr><th scope="row"><label for="blc-event-description">' . esc_html__( 'Description', 'blc-wellness-management-system' ) . '</label></th><td><textarea id="blc-event-description" name="event_description" class="large-text" rows="4">' . esc_textarea( $edit ? $edit->post_content : '' ) . '</textarea></td></tr>';
+		echo '<tr><th scope="row"><label for="blc-event-start">' . esc_html__( 'Start date and time', 'blc-wellness-management-system' ) . '</label></th><td><input id="blc-event-start" name="event_start" type="datetime-local" value="' . esc_attr( $edit ? get_post_meta( $edit_id, '_blc_event_start', true ) : '' ) . '" required></td></tr>';
+		echo '<tr><th scope="row"><label for="blc-event-end">' . esc_html__( 'End date and time', 'blc-wellness-management-system' ) . '</label></th><td><input id="blc-event-end" name="event_end" type="datetime-local" value="' . esc_attr( $edit ? get_post_meta( $edit_id, '_blc_event_end', true ) : '' ) . '" required></td></tr>';
+		echo '<tr><th scope="row"><label for="blc-event-location">' . esc_html__( 'Location', 'blc-wellness-management-system' ) . '</label></th><td><input id="blc-event-location" name="event_location" type="text" class="regular-text" value="' . esc_attr( $edit ? get_post_meta( $edit_id, '_blc_event_location', true ) : '' ) . '"></td></tr>';
+		echo '<tr><th scope="row"><label for="blc-event-url">' . esc_html__( 'Join URL', 'blc-wellness-management-system' ) . '</label></th><td><input id="blc-event-url" name="event_url" type="url" class="regular-text" placeholder="https://" value="' . esc_attr( $edit ? get_post_meta( $edit_id, '_blc_event_url', true ) : '' ) . '"></td></tr>';
+		echo '</tbody></table>';
+		wp_nonce_field( $edit ? 'blc_update_event_' . $edit_id : 'blc_save_event', 'blc_event_nonce' );
+		echo '<input type="hidden" name="blc_event_action" value="' . esc_attr( $edit ? 'update' : 'save' ) . '">';
+		if ( $edit ) {
+			echo '<input type="hidden" name="event_id" value="' . esc_attr( $edit_id ) . '">';
+		}
+		submit_button( $edit ? __( 'Update Event', 'blc-wellness-management-system' ) : __( 'Add Event', 'blc-wellness-management-system' ) );
+		if ( $edit ) {
+			echo ' <a class="button" href="' . esc_url( admin_url( 'admin.php?page=blc-wellness-events' ) ) . '">' . esc_html__( 'Cancel', 'blc-wellness-management-system' ) . '</a>';
+		}
+		echo '</form><hr><h2>' . esc_html__( 'Saved Events', 'blc-wellness-management-system' ) . '</h2>';
+		if ( ! $events ) {
+			echo '<p>' . esc_html__( 'No events have been added yet.', 'blc-wellness-management-system' ) . '</p>';
+		} else {
+			echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Event', 'blc-wellness-management-system' ) . '</th><th>' . esc_html__( 'Starts', 'blc-wellness-management-system' ) . '</th><th>' . esc_html__( 'Ends', 'blc-wellness-management-system' ) . '</th><th>' . esc_html__( 'Location', 'blc-wellness-management-system' ) . '</th><th>' . esc_html__( 'Join URL', 'blc-wellness-management-system' ) . '</th><th>' . esc_html__( 'Actions', 'blc-wellness-management-system' ) . '</th></tr></thead><tbody>';
+			foreach ( $events as $event ) {
+				$event_url = get_post_meta( $event->ID, '_blc_event_url', true );
+				echo '<tr><td>' . esc_html( get_the_title( $event ) ) . '</td><td>' . esc_html( get_post_meta( $event->ID, '_blc_event_start', true ) ) . '</td><td>' . esc_html( get_post_meta( $event->ID, '_blc_event_end', true ) ) . '</td><td>' . esc_html( get_post_meta( $event->ID, '_blc_event_location', true ) ) . '</td><td>';
+				if ( $event_url ) {
+					echo '<a href="' . esc_url( $event_url ) . '" target="_blank" rel="noopener noreferrer">' . esc_html( $event_url ) . '</a>';
+				}
+				echo '</td><td><a class="button button-small" href="' . esc_url( add_query_arg( array( 'page' => 'blc-wellness-events', 'edit_event' => $event->ID ), admin_url( 'admin.php' ) ) ) . '">' . esc_html__( 'Edit', 'blc-wellness-management-system' ) . '</a> <form method="post" action="" style="display:inline" onsubmit="return confirm(\'' . esc_js( __( 'Delete this event?', 'blc-wellness-management-system' ) ) . '\');">';
+				wp_nonce_field( 'blc_delete_event_' . $event->ID, 'blc_event_nonce' );
+				echo '<input type="hidden" name="blc_event_action" value="delete"><input type="hidden" name="event_id" value="' . esc_attr( $event->ID ) . '"><button type="submit" class="button button-small">' . esc_html__( 'Delete', 'blc-wellness-management-system' ) . '</button></form></td></tr>';
+			}
+			echo '</tbody></table>';
+		}
+		echo '</div>';
+	}
+
+	/** Render upcoming and in-progress events for the public Wellness Programs page. */
+	public static function render_frontend_events() {
+		$events = get_posts(
+			array(
+				'post_type'      => 'blc_wellness_event',
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'orderby'        => 'date',
+				'order'          => 'DESC',
+			)
+		);
+		$now    = current_datetime();
+		$active = array();
+
+		foreach ( $events as $event ) {
+			$start_value = get_post_meta( $event->ID, '_blc_event_start', true );
+			if ( '' === $start_value ) {
+				$start_value = get_post_meta( $event->ID, '_blc_event_datetime', true );
+			}
+			$start = self::parse_event_datetime( $start_value );
+			if ( ! $start ) {
+				continue;
+			}
+
+			$end_value = get_post_meta( $event->ID, '_blc_event_end', true );
+			$end       = '' !== $end_value ? self::parse_event_datetime( $end_value ) : null;
+			if ( ( '' !== $end_value && ( ! $end || $end < $now ) ) || ( '' === $end_value && $start < $now ) ) {
+				continue;
+			}
+			$active[] = array( 'post' => $event, 'start' => $start, 'end' => $end );
+		}
+
+		usort(
+			$active,
+			static function ( $first, $second ) {
+				return $first['start'] <=> $second['start'];
+			}
+		);
+
+		if ( ! $active ) {
+			return '<div class="blc-events-empty"><span class="blc-events-empty__icon" aria-hidden="true">✦</span><h3>' . esc_html__( 'No upcoming events', 'blc-wellness-management-system' ) . '</h3><p>' . esc_html__( 'Please check back soon for wellness events and activities.', 'blc-wellness-management-system' ) . '</p></div>';
+		}
+
+		$html = '<div class="blc-events-grid">';
+		foreach ( $active as $item ) {
+			$event    = $item['post'];
+			$start    = $item['start'];
+			$end      = $item['end'];
+			$location = get_post_meta( $event->ID, '_blc_event_location', true );
+			$event_url = get_post_meta( $event->ID, '_blc_event_url', true );
+			$html .= '<article class="blc-event-card">';
+			$html .= '<div class="blc-event-card__date"><span class="blc-event-card__month">' . esc_html( wp_date( 'M', $start->getTimestamp() ) ) . '</span><span class="blc-event-card__day">' . esc_html( wp_date( 'j', $start->getTimestamp() ) ) . '</span></div>';
+			$html .= '<div class="blc-event-card__content"><p class="blc-event-card__eyebrow">' . esc_html( wp_date( 'l, ' . get_option( 'date_format' ), $start->getTimestamp() ) ) . '</p>';
+			$html .= '<h3>' . esc_html( get_the_title( $event ) ) . '</h3>';
+			$html .= '<p class="blc-event-card__time"><span aria-hidden="true">◷</span> ' . esc_html( wp_date( get_option( 'time_format' ), $start->getTimestamp() ) );
+			if ( $end ) {
+				$html .= ' – ' . esc_html( wp_date( wp_date( 'Y-m-d', $start->getTimestamp() ) === wp_date( 'Y-m-d', $end->getTimestamp() ) ? get_option( 'time_format' ) : get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $end->getTimestamp() ) );
+			}
+			$html .= '</p>';
+			if ( $location ) {
+				$html .= '<p class="blc-event-card__location"><span aria-hidden="true">⌖</span> ' . esc_html( $location ) . '</p>';
+			}
+			if ( $event->post_content ) {
+				$html .= '<div class="blc-event-card__description">' . wp_kses_post( wpautop( $event->post_content ) ) . '</div>';
+			}
+			if ( $event_url ) {
+				$html .= '<a class="blc-event-card__link" href="' . esc_url( $event_url ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Join event', 'blc-wellness-management-system' ) . '<span aria-hidden="true"> →</span></a>';
+			}
+			$html .= '</div></article>';
+		}
+		return $html . '</div>';
+	}
+
+	/** Parse the datetime-local value saved for an event in the site timezone. */
+	private static function parse_event_datetime( $value ) {
+		if ( ! is_string( $value ) || '' === $value ) {
+			return false;
+		}
+
+		$date   = DateTimeImmutable::createFromFormat( '!Y-m-d\\TH:i', $value, wp_timezone() );
+		$errors = DateTimeImmutable::getLastErrors();
+		if ( ! $date || ( is_array( $errors ) && ( $errors['warning_count'] || $errors['error_count'] ) ) || $date->format( 'Y-m-d\\TH:i' ) !== $value ) {
+			return false;
+		}
+		return $date;
+	}
+
+	/** Validate and store an event submitted from the admin screen. */
+	private static function save_admin_event() {
+		$event_id = isset( $_POST['event_id'] ) ? absint( $_POST['event_id'] ) : 0;
+		$action   = isset( $_POST['blc_event_action'] ) ? sanitize_key( wp_unslash( $_POST['blc_event_action'] ) ) : 'save';
+		$nonce    = isset( $_POST['blc_event_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['blc_event_nonce'] ) ) : '';
+		$nonce_action = 'update' === $action ? 'blc_update_event_' . $event_id : 'blc_save_event';
+		if ( ! wp_verify_nonce( $nonce, $nonce_action ) ) {
+			return __( 'The event could not be saved. Please reload and try again.', 'blc-wellness-management-system' );
+		}
+		if ( $event_id && ( ! get_post( $event_id ) || 'blc_wellness_event' !== get_post_type( $event_id ) ) ) {
+			return __( 'The selected event could not be found.', 'blc-wellness-management-system' );
+		}
+
+		$title       = isset( $_POST['event_title'] ) ? sanitize_text_field( wp_unslash( $_POST['event_title'] ) ) : '';
+		$description = isset( $_POST['event_description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['event_description'] ) ) : '';
+		$event_start = isset( $_POST['event_start'] ) ? sanitize_text_field( wp_unslash( $_POST['event_start'] ) ) : '';
+		$event_end   = isset( $_POST['event_end'] ) ? sanitize_text_field( wp_unslash( $_POST['event_end'] ) ) : '';
+		$location    = isset( $_POST['event_location'] ) ? sanitize_text_field( wp_unslash( $_POST['event_location'] ) ) : '';
+		$event_url   = isset( $_POST['event_url'] ) ? esc_url_raw( wp_unslash( $_POST['event_url'] ), array( 'http', 'https' ) ) : '';
+		if ( '' === $title || '' === $event_start || '' === $event_end ) {
+			return __( 'Event name, start, and end date/time are required.', 'blc-wellness-management-system' );
+		}
+		if ( $event_end < $event_start ) {
+			return __( 'The end date and time must be after the start date and time.', 'blc-wellness-management-system' );
+		}
+
+		$post_data = array(
+			'ID'           => $event_id,
+			'post_type'    => 'blc_wellness_event',
+			'post_status'  => 'publish',
+			'post_title'   => $title,
+			'post_content' => $description,
+		);
+		$saved_id = wp_insert_post(
+			$post_data,
+			true
+		);
+		if ( is_wp_error( $saved_id ) ) {
+			return __( 'The event could not be saved.', 'blc-wellness-management-system' );
+		}
+
+		update_post_meta( $saved_id, '_blc_event_start', $event_start );
+		update_post_meta( $saved_id, '_blc_event_end', $event_end );
+		update_post_meta( $saved_id, '_blc_event_location', $location );
+		update_post_meta( $saved_id, '_blc_event_url', $event_url );
+		return $event_id ? __( 'Event updated.', 'blc-wellness-management-system' ) : __( 'Event added.', 'blc-wellness-management-system' );
+	}
+
+	/** Verify and delete an event submitted from the admin list. */
+	private static function delete_admin_event() {
+		$event_id = isset( $_POST['event_id'] ) ? absint( $_POST['event_id'] ) : 0;
+		$nonce    = isset( $_POST['blc_event_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['blc_event_nonce'] ) ) : '';
+		if ( ! $event_id || ! wp_verify_nonce( $nonce, 'blc_delete_event_' . $event_id ) || 'blc_wellness_event' !== get_post_type( $event_id ) ) {
+			return __( 'The event could not be deleted. Please reload and try again.', 'blc-wellness-management-system' );
+		}
+
+		return wp_delete_post( $event_id, true ) ? __( 'Event deleted.', 'blc-wellness-management-system' ) : __( 'The event could not be deleted.', 'blc-wellness-management-system' );
+	}
+
+	/** Render the Settings submenu placeholder. */
+	public static function render_settings_admin_page() {
+		self::render_admin_placeholder( __( 'Settings', 'blc-wellness-management-system' ), __( 'Wellness program settings will appear here.', 'blc-wellness-management-system' ) );
+	}
+
+	/** Render a simple administrator-only submenu screen. */
+	private static function render_admin_placeholder( $title, $message ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'blc-wellness-management-system' ) );
+		}
+
+		echo '<div class="wrap"><h1>' . esc_html( $title ) . '</h1><p>' . esc_html( $message ) . '</p></div>';
 	}
 
 	/** Load modal assets only on the weight loss data screen. */
 	public static function enqueue_admin_assets( $hook ) {
-		if ( self::$admin_page_hook !== $hook ) {
+		if ( ! in_array( $hook, self::$admin_page_hook, true ) ) {
 			return;
 		}
 

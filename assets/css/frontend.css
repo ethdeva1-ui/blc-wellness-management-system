@@ -957,6 +957,140 @@
 	margin-bottom: 0;
 }
 
+.blc-events-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 1rem;
+	max-width: 52rem;
+}
+
+.blc-event-card {
+	position: relative;
+	display: grid;
+	grid-template-columns: 5rem minmax(0, 1fr);
+	align-items: start;
+	gap: 1.35rem;
+	padding: 1.5rem;
+	overflow: hidden;
+	border: 1px solid var(--blc-wellness-border);
+	border-radius: 1.1rem;
+	background: #fff;
+	box-shadow: 0 0.5rem 1.5rem rgba(24, 59, 54, 0.07);
+	transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.blc-event-card:hover {
+	border-color: #b9d4c6;
+	box-shadow: 0 0.8rem 1.8rem rgba(24, 59, 54, 0.11);
+}
+
+.blc-event-card__date {
+	display: flex;
+	min-height: 5rem;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid #dcebe1;
+	border-radius: 0.9rem;
+	background: linear-gradient(160deg, #edf7f0 0%, #e5f1e9 100%);
+	color: var(--blc-wellness-accent);
+}
+
+.blc-event-card__month {
+	font-size: 0.72rem;
+	font-weight: 800;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.blc-event-card__day {
+	font-size: 1.65rem;
+	font-weight: 800;
+	line-height: 1.1;
+}
+
+.blc-event-card__content h3 {
+	margin: 0 0 0.65rem;
+	color: var(--blc-wellness-ink);
+	font-size: clamp(1.15rem, 2vw, 1.4rem);
+	line-height: 1.25;
+}
+
+.blc-event-card__eyebrow {
+	margin: 0 0 0.4rem;
+	color: var(--blc-wellness-accent);
+	font-size: 0.75rem;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.blc-event-card__time,
+.blc-event-card__location {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	margin: 0.2rem 1rem 0.2rem 0;
+	color: var(--blc-wellness-muted);
+	font-size: 0.92rem;
+	line-height: 1.5;
+}
+
+.blc-event-card__description {
+	margin-top: 0.9rem;
+	padding-top: 0.75rem;
+	border-top: 1px solid #edf2ee;
+	color: var(--blc-wellness-muted);
+	font-size: 0.95rem;
+	line-height: 1.6;
+}
+
+.blc-event-card__description > :last-child {
+	margin-bottom: 0;
+}
+
+.blc-event-card__link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	margin-top: 1.1rem;
+	padding: 0.65rem 0.9rem;
+	border-radius: 0.65rem;
+	background: var(--blc-wellness-accent);
+	color: #fff;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.blc-event-card__link:hover,
+.blc-event-card__link:focus-visible {
+	background: var(--blc-wellness-ink);
+	color: #fff;
+}
+
+.blc-events-empty {
+	padding: clamp(1.5rem, 5vw, 3rem);
+	border: 1px dashed var(--blc-wellness-border);
+	border-radius: 1rem;
+	background: #f8fbf8;
+	text-align: center;
+}
+
+.blc-events-empty__icon {
+	color: var(--blc-wellness-accent);
+	font-size: 2rem;
+}
+
+.blc-events-empty h3 {
+	margin: 0.5rem 0;
+	color: var(--blc-wellness-ink);
+}
+
+.blc-events-empty p {
+	margin: 0;
+	color: var(--blc-wellness-muted);
+}
+
 @media (max-width: 600px) {
 	.blc-wellness-menu {
 		position: static;
@@ -975,11 +1109,25 @@
 	.blc-drink-calculator__results {
 		grid-template-columns: 1fr;
 	}
+
+	.blc-event-card {
+		grid-template-columns: 3.75rem minmax(0, 1fr);
+		gap: 0.85rem;
+		padding: 1rem;
+	}
+
+	.blc-event-card__date {
+		min-height: 4.25rem;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {
 	.blc-wellness-menu a,
 	.blc-wellness-menu button {
+		transition: none;
+	}
+
+	.blc-event-card {
 		transition: none;
 	}
 }

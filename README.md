@@ -2,7 +2,7 @@
 
 ## Frontend page
 
-When the plugin is activated, it creates a published **Wellness Programs** page at `/wellness-programs/` and a separate **Weight Loss Management** page at `/weight-loss-management/`. If the plugin was already active when this feature was added, visit the WordPress dashboard once to create the pages. On the Wellness Programs page, the menu works as tabs: Rethink Your Drink is shown first, and Weight Loss Management stays hidden until selected. Switching tabs does not navigate away.
+When the plugin is activated, it creates a published **Wellness Programs** page at `/wellness-programs/` and a separate **Weight Loss Management** page at `/weight-loss-management/`. If the plugin was already active when this feature was added, visit the WordPress dashboard once to create the pages. On the Wellness Programs page, the menu works as tabs: Rethink Your Drink is shown first; Weight Loss Management and Events stay hidden until selected. Switching tabs does not navigate away. The Events tab currently has a placeholder for upcoming wellness events.
 
 You can also add `[blc_wellness_page]` to any page or post to display the complete layout elsewhere. The Rethink Your Drink section includes the sugar and calorie calculator and a comparison table of the typical per-serving estimates. Its PHP shortcode and drink estimates are in `backend/class-blc-drink-calculator.php`; its browser interaction is in `frontend/drink-calculator.js`.
 
